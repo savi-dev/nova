@@ -17,7 +17,8 @@ from janusclient import client as jclient
 
 janus_plugin_opts = [
     cfg.StrOpt('janus_host',
-               default='http://10.10.20.10',
+               #default='http://10.10.20.10',
+               default='http://10.20.32.10',
                help='SDI manager host name'),
     cfg.StrOpt('janus_port',
                default='9091',
@@ -44,7 +45,7 @@ class JanusPlugin(plugins.BaseHostPlugin):
         selectedHosts = hosts
         data = {'metric': metric, 'hosts': hosts}
         try:
-            selectedHosts = self._client.novasch.select_hosts(metric, hosts)
+            selectedHosts = self._client.novasch.select_hosts(metric, hosts)['filter']
             # return hosts from Janus
             LOG.debug(_("receive results from Janus: %s"), selectedHosts)
         except:

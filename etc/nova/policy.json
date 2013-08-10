@@ -1,6 +1,7 @@
 {
     "context_is_admin":  [["role:admin"]],
     "admin_or_owner":  [["is_admin:True"], ["project_id:%(project_id)s"]],
+    "member_required": [["role:Member"],["role:admin"], ["project_id:%(project_id)s"]],
     "default": [["rule:admin_or_owner"]],
 
 
@@ -33,7 +34,7 @@
     "compute_extension:createserverext": [],
     "compute_extension:deferred_delete": [],
     "compute_extension:disk_config": [],
-    "compute_extension:extended_server_attributes": [["rule:admin_api"]],
+    "compute_extension:extended_server_attributes": [["rule:admin_api"], ["rule:member_required"]],
     "compute_extension:extended_status": [],
     "compute_extension:flavor_access": [],
     "compute_extension:flavor_disabled": [],

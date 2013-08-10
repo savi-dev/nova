@@ -275,15 +275,14 @@ class FilterScheduler(driver.Scheduler):
         # @author Eliot J. Kang <eliot@savinetwork.ca>
         # Get hosts based on plugins
         # plugined_hosts = ['node']
-        sch_metric = 'temperature'
         _scheduler_hints = filter_properties.get('scheduler_hints', [])
-        LOG.debug(_("sch_metric: %s") % sch_metric)
+        sch_metric='none'
         if _scheduler_hints:
             sch_metric = _scheduler_hints.get('sch_metric', [])
             LOG.debug(_("sch_metric: %s") % sch_metric)
-
-        plugined_nodes = self.host_manager.get_plugined_nodes(elevated, topic, 
-            janus_plugin.JanusPlugin(), sch_metric)
+        else:
+            LOG.debug(_("No specified filter for janus scheduling"))
+        plugined_nodes = self.host_manager.get_plugined_nodes(elevated, topic, janus_plugin.JanusPlugin(), sch_metric)
         # -------------------------------------------------------------------------------
  
         # unfiltered_hosts_dict is {host : ZoneManager.HostInfo()}

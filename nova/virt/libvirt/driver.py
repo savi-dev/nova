@@ -291,7 +291,7 @@ class LibvirtDriver(driver.ComputeDriver):
         self.default_third_device = self._disk_prefix + 'c'
         self.default_last_device = self._disk_prefix + 'z'
 
-        self._disk_cachemode = None
+        self._disk_cachemode = 'writeback'
         self.image_cache_manager = imagecache.ImageCacheManager()
         self.image_backend = imagebackend.Backend(FLAGS.use_cow_images)
 
@@ -1744,7 +1744,7 @@ class LibvirtDriver(driver.ComputeDriver):
                 if FLAGS.libvirt_type == "xen":
                     guest.os_cmdline = "ro"
                 else:
-                    guest.os_cmdline = "root=%s console=ttyS0" % (
+                    guest.os_cmdline = "root=%s elevator=noop console=ttyS0" % (
                         root_device_name or "/dev/vda",)
                 if instance['ramdisk_id']:
                     guest.os_initrd = os.path.join(FLAGS.instances_path,
