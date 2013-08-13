@@ -44,14 +44,14 @@ def _get_auth_token():
 
 
 def get_client(context):
-    token = context.auth_token
-    if not token:
-        if FLAGS.quantum_auth_strategy:
-            token = _get_auth_token()
-    if token:
-        my_client = clientv20.Client(
-            endpoint_url=FLAGS.quantum_url,
-            token=token, timeout=FLAGS.quantum_url_timeout)
+    if FLAGS.quantum_auth_strategy and FLAGS.quantum_auth_strategy != 'noauth':
+       token = context.auth_token
+       if not token:
+           token = _get_auth_token()
+       if token:
+           my_client = clientv20.Client(
+                        endpoint_url=FLAGS.quantum_url,
+                        token=token, timeout=FLAGS.quantum_url_timeout)
     else:
         my_client = clientv20.Client(
             endpoint_url=FLAGS.quantum_url,
