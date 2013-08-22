@@ -108,6 +108,23 @@ class Ipmi(object):
         LOG.debug("err: %s", err)
         return out, err
 
+    def power_on(self):
+        self._exec_ipmitool("power on")
+
+    def power_off(self):
+        self._exec_ipmitool("power off")
+
+    def reboot(self):
+        self._exec_ipmitool("power reset")
+
+    def power_status(self):
+        out_err = self._exec_ipmitool("power status")
+        if "off" in out_err[0]:
+           out_err = ("2\n", "")
+        elif "on" in out_err[0]:
+           out_err = ("1\n", "")
+        return out_err
+
     def activate_node(self):
         self._power_off()
         state = self._power_on()
