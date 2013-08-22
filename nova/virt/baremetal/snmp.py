@@ -30,6 +30,7 @@ from nova.openstack.common import cfg
 from nova.openstack.common import log as logging
 from nova import utils
 from nova.virt.baremetal import baremetal_states
+from nova.virt.baremetal.ipmi import Ipmi
 
 opts = [
     cfg.StrOpt('baremetal_term',
@@ -188,12 +189,21 @@ class SnmpNetBoot(object):
         elif self._type == "b":
            if len(self._oids) < 3:
               raise SnmpNetBootError(-1, "snmp oid for type b is not enough")
+        elif self._type == "c":
+           if len(self._oids) < 1:
+              raise SnmpNetBootError(-1, "ipmi for type c is not enough")
         if self._community == None:
             raise SnmpNetBootError(-1, "snmp community(password) is None")
         if self._type == "a":
            self._snmp = SnmpTypeA(self._address, self._community, self._oids)
         elif self._type == "b":
            self._snmp = SnmpTypeB(self._address, self._community, self._oids)
+        elif self._type == "c":
+           my_node = node
+           my_node['pm_address'] = self._address
+           my_node['pm_user'] = oids[1]
+           my_node['pm_password'] = self._community
+           self._snmp = Ipmi(my_node)
 
     def _exec_snmpget_tool(self, command):
         args = []
