@@ -2425,8 +2425,8 @@ class LibvirtDriver(driver.ComputeDriver):
             raise
 
         if ret <= 0:
-            LOG.error(reason=m % locals())
-            raise exception.InvalidCPUInfo(reason=m % locals())
+            LOG.error(m % locals())
+            raise exception.InvalidCPUInfo(m % locals())
 
     def _create_shared_storage_test_file(self):
         """Makes tmpfile under FLAGS.instance_path."""

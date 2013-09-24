@@ -108,7 +108,7 @@ class SnmpTypeB(object):
     def power_off(self):
         self._exec_snmpset_tool(self._oid_s_p, "i 0")
 
-    def reboot(self):
+    def reboot(self, reboot_type):
         self._exec_snmpset_tool(self._oid_s_r, "i 1")
 
     def power_status(self):
@@ -164,7 +164,7 @@ class SnmpTypeA(object):
     def power_off(self):
         self._exec_snmpset_tool("i 2")
 
-    def reboot(self):
+    def reboot(self, reboot_type):
         self._exec_snmpset_tool("i 3")
 
     def power_status(self):
@@ -240,8 +240,8 @@ class SnmpNetBoot(object):
         self.power_state = True
         return state
 
-    def reboot_node(self):
-        state = self._reboot()
+    def reboot_node(self, reboot_type):
+        state = self._reboot(reboot_type)
         LOG.debug("in reboot node")
         state = baremetal_states.ACTIVE
         self.power_state = True
@@ -282,13 +282,13 @@ class SnmpNetBoot(object):
             time.sleep(5)
         return baremetal_states.DELETED
 
-    def _reboot(self):
+    def _reboot(self, reboot_type):
         count = 0
         if self._is_power_off():
             return self._power_on()
         else:
             try:
-                self._snmp.reboot()
+                self._snmp.reboot(reboot_type)
                 #self._exec_snmpset_tool("i 3")
             except Exception:
                 LOG.exception("reboot failed")

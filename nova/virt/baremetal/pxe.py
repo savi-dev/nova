@@ -324,10 +324,11 @@ class PXE(object):
                     and mapping['should_create_vlan'] \
                     and network_ref.get('vlan'):
                 name = 'eth%d.%d' % (ifc_num, network_ref.get('vlan'))
+            gateway=mapping.get('gateway', None)
             net_info = {'name': name,
                    'address': address,
                    'netmask': netmask,
-                   'gateway': mapping['gateway'],
+                   'gateway': gateway,
                    'broadcast': mapping['broadcast'],
                    'dns': ' '.join(mapping['dns']),
                    'address_v6': address_v6,
