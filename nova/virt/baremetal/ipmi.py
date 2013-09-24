@@ -114,8 +114,12 @@ class Ipmi(object):
     def power_off(self):
         self._exec_ipmitool("power off")
 
-    def reboot(self):
-        self._exec_ipmitool("power reset")
+    def reboot(self, reboot_type):
+        LOG.debug("reboot type %s", reboot_type)
+        if reboot_type == 'HARD':
+           self._exec_ipmitool("power cycle")
+        else:
+           self._exec_ipmitool("power reset")
 
     def power_status(self):
         out_err = self._exec_ipmitool("power status")

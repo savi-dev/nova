@@ -250,9 +250,11 @@ class BareMetalDriver(driver.ComputeDriver):
         if not node:
             raise exception.InstanceNotFound(instance_id=instance['uuid'])
 
+        LOG.info("Instance:id='%s' reboot type %s" % (instance['uuid'], reboot_type))
         ctx = nova_context.get_admin_context()
         pm = get_power_manager(node)
-        state = pm.reboot_node()
+        
+        state = pm.reboot_node(reboot_type)
         _update_baremetal_state(ctx, node, instance, state)
 
     def destroy(self, instance, network_info, block_device_info=None):

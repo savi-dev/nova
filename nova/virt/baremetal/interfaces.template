@@ -13,7 +13,9 @@ iface ${ifc.name} inet static
         address ${ifc.address}
         netmask ${ifc.netmask}
         broadcast ${ifc.broadcast}
+#if $ifc.gateway
         gateway ${ifc.gateway}
+#end if
 #if $ifc.dns
         dns-nameservers ${ifc.dns}
 #end if
