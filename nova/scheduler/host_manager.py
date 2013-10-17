@@ -421,29 +421,15 @@ class HostManager(object):
 
         return host_state_map
 
-    def get_plugined_nodes(self, context, topic, plugin, metric):
+    def get_plugined_nodes(self, nodes, plugin, metric):
         """Returns a dict of all the hosts the HostManager
         knows about.
         @author Eliot J. Kang <eliot@savinetwork.ca>
         """
        
-        if topic != 'compute':
-            raise NotImplementedError(_(
-                "host_manager only implemented for 'compute'"))
-
-        hosts = []
-        compute_nodes = db.compute_node_get_all(context)
-        for compute in compute_nodes:
-            service = compute['service']
-            nodename = compute.get('hypervisor_hostname')
-            if not service:
-                LOG.warn(_("No service for compute ID %s") % compute['id'])
-                continue
-            nodename = compute.get('hypervisor_hostname')
-            host = nodename
-            hosts.append(host)
-
-        LOG.debug(_("Host list before plugin: %s") % hosts)
-        hosts = plugin.host_select(hosts, metric)
-        LOG.debug(_("Host list after plugin: %s") % hosts)
-        return hosts
+        LOG.debug(_("Host list before plugin: %s") % nodes)
+        LOG.debug(_("metric: %s") % metric)
+        if metric != 'none':
+            hosts = plugin.host_select(nodes, metric)
+        LOG.debug(_("Host list after plugin: %s") % nodes)
+        return nodes

@@ -271,26 +271,10 @@ class FilterScheduler(driver.Scheduler):
         # host, we virtually consume resources on it so subsequent
         # selections can adjust accordingly.
 
-        # -------------------------------------------------------------------------------
-        # @author Eliot J. Kang <eliot@savinetwork.ca>
-        # Get hosts based on plugins
-        # plugined_hosts = ['node']
-        _scheduler_hints = filter_properties.get('scheduler_hints', [])
-        sch_metric='none'
-        if _scheduler_hints:
-            sch_metric = _scheduler_hints.get('sch_metric', [])
-            LOG.debug(_("sch_metric: %s") % sch_metric)
-        else:
-            LOG.debug(_("No specified filter for janus scheduling"))
-        plugined_nodes = self.host_manager.get_plugined_nodes(elevated, topic, janus_plugin.JanusPlugin(), sch_metric)
-        # -------------------------------------------------------------------------------
- 
         # unfiltered_hosts_dict is {host : ZoneManager.HostInfo()}
 
-        LOG.debug(_("filter_props in _schedule %(filter_properties)s") % locals())
         unfiltered_hosts_dict = self.host_manager.get_all_host_states(
-                elevated, topic, plugined_nodes)
-        LOG.debug(_("unfiltered host dict is %(unfiltered_hosts_dict)s") % locals())
+                elevated, topic)
 
         # Note: remember, we are using an iterator here. So only
         # traverse this list once. This can bite you if the hosts
@@ -328,6 +312,21 @@ class FilterScheduler(driver.Scheduler):
             weighted_host.host_state.consume_from_instance(
                     instance_properties)
 
+        # -------------------------------------------------------------------------------
+        # @author Eliot J. Kang <eliot@savinetwork.ca>
+        # Get hosts based on plugins
+        # plugined_hosts = ['node']
+        _scheduler_hints = filter_properties.get('scheduler_hints', [])
+        sch_metric='none'
+        if _scheduler_hints:
+            sch_metric = _scheduler_hints.get('sch_metric', [])
+            LOG.debug(_("sch_metric: %s") % sch_metric)
+            selected_hosts = self.host_manager.get_plugined_nodes(selected_hosts, janus_plugin.JanusPlugin(), sch_metric)
+        else:
+            LOG.debug(_("No specified filter for janus scheduling"))
+        # -------------------------------------------------------------------------------
+ 
+ 
         selected_hosts.sort(key=operator.attrgetter('weight'))
         return selected_hosts
 
