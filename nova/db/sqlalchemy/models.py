@@ -117,6 +117,12 @@ class ComputeNode(BASE, NovaBase):
     # '{"vendor_id":"8086", "product_id":"1234", "count":3 }'
     pci_stats = Column(Text)
 
+    # Note(eliot): M&M (Monitoring & Measurement) values for filtering
+    #
+    # Temperature: temperature list for CPU cores or any devices, ignore the default value
+    #             {"CPU": {"Core1": 50.0, "Core2", 50.2}}
+    # Change(eliot): float value as an average of all cores
+    temperature = Column(Float, nullable=True)
 
 class ComputeNodeStat(BASE, NovaBase):
     """Stats related to the current workload of a compute host that are

@@ -274,9 +274,10 @@ class BareMetalDriver(driver.ComputeDriver):
     def reboot(self, context, instance, network_info, reboot_type,
                block_device_info=None, bad_volumes_callback=None):
         node = _get_baremetal_node_by_instance_uuid(instance['uuid'])
+        LOG.info("Instance:id='%s' reboot type %s" % (instance['uuid'], reboot_type))
         ctx = nova_context.get_admin_context()
         pm = get_power_manager(node=node, instance=instance)
-        state = pm.reboot_node()
+        state = pm.reboot_node(reboot_type)
         if pm.state != baremetal_states.ACTIVE:
             raise exception.InstanceRebootFailure(_(
                 "Baremetal power manager failed to restart node "
@@ -411,7 +412,8 @@ class BareMetalDriver(driver.ComputeDriver):
                'cpu_info': 'baremetal cpu',
                'supported_instances':
                         jsonutils.dumps(self.supported_instances),
-               'stats': self.extra_specs
+               'stats': self.extra_specs,
+               'temperature': 85.2
                }
         return dic
 

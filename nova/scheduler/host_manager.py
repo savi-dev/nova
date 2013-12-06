@@ -419,7 +419,7 @@ class HostManager(object):
         capab_copy["timestamp"] = timeutils.utcnow()  # Reported time
         self.service_states[state_key] = capab_copy
 
-    def get_all_host_states(self, context):
+    def get_all_host_states(self, context, nodes=None):
         """Returns a list of HostStates that represents all the hosts
         the HostManager knows about. Also, each of the consumable resources
         in HostState are pre-populated and adjusted based on data in the db.
@@ -435,6 +435,13 @@ class HostManager(object):
                 continue
             host = service['host']
             node = compute.get('hypervisor_hostname')
+
+            # ignore a node which is not in the nodes list
+            # @author Eliot J. Kang <eliot@savinetwork.ca>
+            if not nodes == None and not node in nodes:
+                LOG.debug(_("Ignore the node (%s) becuase it is not in the list: %s") % (node, nodes))
+                continue
+
             state_key = (host, node)
             capabilities = self.service_states.get(state_key, None)
             host_state = self.host_state_map.get(state_key)
@@ -458,3 +465,26 @@ class HostManager(object):
             del self.host_state_map[state_key]
 
         return self.host_state_map.itervalues()
+
+    def get_plugined_nodes(self, context, plugin, metric):
+        """Returns a dict of all the hosts the HostManager
+        knows about.
+        @author Eliot J. Kang <eliot@savinetwork.ca>
+        """
+
+        hosts = []
+        compute_nodes = db.compute_node_get_all(context)
+        for compute in compute_nodes:
+            service = compute['service']
+            nodename = compute.get('hypervisor_hostname')
+            if not service:
+                LOG.warn(_("No service for compute ID %s") % compute['id'])
+                continue
+            nodename = compute.get('hypervisor_hostname')
+            host = nodename
+            hosts.append(host)
+
+        LOG.debug(_("Host list before plugin: %s") % hosts)
+        hosts = plugin.host_select(hosts, metric)
+        LOG.debug(_("Host list after plugin: %s") % hosts)
+        return hosts
