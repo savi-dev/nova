@@ -1268,17 +1268,54 @@ def _create_veth_pair(dev1_name, dev2_name):
         utils.execute('ip', 'link', 'set', dev, 'promisc', 'on',
                       run_as_root=True)
 
+def _ovs_read_ofport_from_external_id(dev):
+    output, _err = utils.execute('ovs-vsctl', '--', '--columns=external_ids', 'list',
+                'interface', dev,
+                run_as_root=True)
+    ofport = -1
+    if output:
+        str = output.rstrip("\n\r")
+        ofport = -1
+        a=str.split(': ')
+        b=a[1].split(',')
+        d = None
+        for c in b:
+            if 'ofport' in c:
+                d=c
+                break
+        if d is not None:
+            e=d.split('=')
+            ofport=int(e[1].strip('"'))
+            
+    return ofport
 
 def create_ovs_vif_port(bridge, dev, iface_id, mac, instance_id):
-    utils.execute('ovs-vsctl', '--', '--may-exist', 'add-port',
-                  bridge, dev,
-                  '--', 'set', 'Interface', dev,
-                  'external-ids:iface-id=%s' % iface_id,
-                  'external-ids:iface-status=active',
-                  'external-ids:attached-mac=%s' % mac,
-                  'external-ids:vm-uuid=%s' % instance_id,
-                  run_as_root=True)
-
+    try:
+        ofport = _ovs_read_ofport_from_external_id(dev)
+    except:
+        ofport = -1
+        pass
+    
+    if ofport <= 0:
+        utils.execute('ovs-vsctl', '--', '--may-exist', 'add-port',
+                bridge, dev,
+                '--', 'set', 'Interface', dev,
+                'external-ids:iface-id=%s' % iface_id,
+                'external-ids:iface-status=active',
+                'external-ids:attached-mac=%s' % mac,
+                'external-ids:vm-uuid=%s' % instance_id,
+                run_as_root=True)
+    else:
+        utils.execute('ovs-vsctl', '--', '--may-exist', 'add-port',
+                bridge, dev,
+                '--', 'set', 'Interface', dev,
+                'external-ids:iface-id=%s' % iface_id,
+                'external-ids:iface-status=active',
+                'external-ids:attached-mac=%s' % mac,
+                'external-ids:vm-uuid=%s' % instance_id,
+                'external-ids:ofport=%s' % ofport,
+                'ofport_request=%s' % ofport,
+                run_as_root=True)
 
 def delete_ovs_vif_port(bridge, dev):
     utils.execute('ovs-vsctl', 'del-port', bridge, dev,

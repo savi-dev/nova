@@ -20,6 +20,7 @@
 """VIF drivers for libvirt."""
 
 import copy
+import traceback
 
 from oslo.config import cfg
 
@@ -32,6 +33,8 @@ from nova.openstack.common import processutils
 from nova import utils
 from nova.virt.libvirt import config as vconfig
 from nova.virt.libvirt import designer
+
+from janus.network.network import JanusNetworkDriver
 
 LOG = logging.getLogger(__name__)
 
@@ -46,10 +49,17 @@ libvirt_vif_opts = [
                 help='Use virtio for bridge interfaces with KVM/QEMU'),
 ]
 
+janus_libvirt_ovs_driver_opt = cfg.StrOpt('libvirt_ovs_janus_api_host',
+                                        default = '127.0.0.1:8091',
+                                        help = 'Janus REST API host:port')
+
+
 CONF = cfg.CONF
 CONF.register_opts(libvirt_vif_opts)
 CONF.import_opt('libvirt_type', 'nova.virt.libvirt.driver')
 CONF.import_opt('use_ipv6', 'nova.netconf')
+
+CONF.register_opt(janus_libvirt_ovs_driver_opt)
 
 # Since libvirt 0.9.11, <interface type='bridge'>
 # supports OpenVSwitch natively.
@@ -807,6 +817,127 @@ class LibvirtHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
     def unplug(self, instance, vif):
         return self.unplug_ovs_hybrid(instance, vif)
 
+def _get_datapath_id(bridge_name):
+    out, _err = utils.execute('ovs-vsctl', 'get', 'Bridge',
+                              bridge_name, 'datapath_id', run_as_root = True)
+    return out.strip().strip('"')
+
+
+def _get_port_no(dev):
+    out, _err = utils.execute('ovs-vsctl', 'get', 'Interface', dev,
+                              'ofport', run_as_root = True)
+    return int(out.strip())
+
+def _set_port_no_in_external_id(dev, of_port):
+    out, _err = utils.execute('ovs-vsctl', 'set', 'Interface', dev,
+                              'external-ids:ofport=%s' % of_port, run_as_root = True)
+    return
+
+
+class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
+    """Retained in Grizzly for compatibility with Neutron
+       drivers which do not yet report 'vif_type' port binding.
+       Will be deprecated in Havana, and removed in Ixxxx.
+    """
+
+    def __init__(self, _get_connection):
+        super(LibvirtJanusHybridOVSBridgeDriver, self).__init__(_get_connection)
+        LOG.debug('Janus REST host and port: %s', CONF.libvirt_ovs_janus_api_host)
+        host, port = CONF.libvirt_ovs_janus_api_host.split(':')
+        self.client = JanusNetworkDriver(host, port)
+        self.datapath_id = _get_datapath_id(CONF.libvirt_ovs_bridge)
+
+    def get_bridge_name(self, vif):
+        return vif['network']['bridge'] or CONF.libvirt_ovs_bridge
+
+    def get_ovs_interfaceid(self, vif):
+        return vif.get('ovs_interfaceid') or vif['id']
+
+    def _get_port_no(self, vif):
+        iface_id = self.get_ovs_interfaceid(vif)
+        _v1_name, v2_name = self.get_veth_pair_names(iface_id)
+        return (v2_name, _get_port_no(v2_name))
+
+    def get_config(self, instance, vif, image_meta, inst_type):
+        LOG.deprecated(_("The LibvirtHybridOVSBridgeDriver VIF driver is now "
+                         "deprecated and will be removed in the next release. "
+                         "Please use the LibvirtGenericVIFDriver VIF driver, "
+                         "together with a network plugin that reports the "
+                         "'vif_type' attribute"))
+        return self.get_config_ovs_hybrid(instance,
+                                          vif,
+                                          image_meta,
+                                          inst_type)
+
+    def plug(self, instance, vif):
+        ret = self.plug_ovs_hybrid(instance, vif)
+        iface_id = self.get_ovs_interfaceid(vif)
+        
+        br_name = self.get_bridge_name(vif)
+        datapath_id = _get_datapath_id(br_name)
+        
+        (v2_name, of_port_no) = self._get_port_no(vif)
+        
+        mac_address = vif.get('address', None)
+        try:
+            _set_port_no_in_external_id(v2_name, of_port_no)
+        except:
+            traceback.print_exc()
+            pass
+        
+        net = vif.get('network')
+        subnets = net.get('subnets')
+        network_id = net['id']
+        try:
+            self.client.createPort(network_id, datapath_id, of_port_no, migrating = False)
+            self.client.addMAC(network_id, mac_address)
+            for subnet in subnets:
+                ips = subnet['ips']
+                for ip in ips:
+                    ip_address = ip['address']
+                    self.client.ip_mac_mapping(network_id, datapath_id,
+                                           mac_address, ip_address,
+                                           of_port_no,
+                                           migrating = False)
+        except httplib.HTTPException as e:
+            res = e.args[0]
+            if res.status != httplib.CONFLICT:
+                raise
+
+        return ret 
+
+    def unplug(self, instance, vif):
+        iface_id = self.get_ovs_interfaceid(vif)
+        
+        br_name = self.get_bridge_name(vif)
+        datapath_id = _get_datapath_id(br_name)
+        
+        (v2_name, of_port_no) = self._get_port_no(vif)
+        
+        mac_address = vif.get('address', None)
+        net = vif.get('network')
+        subnets = net.get('subnets')
+        network_id = net['id']
+        
+        ret = self.unplug_ovs_hybrid(instance, vif)
+        
+        try:
+            self.client.deletePort(network_id, datapath_id, of_port_no)
+            # To do: Un-mapping of ip to mac?
+        except httplib.HTTPException as e:
+            res = e.args[0]
+            if res.status != httplib.NOT_FOUND:
+                traceback.print_exc()
+                raise
+        try:
+            self.client.delMAC(network_id, mac_address)
+        except httplib.HTTPException as e:
+            res = e.args[0]
+            if res.status != httplib.NOT_FOUND:
+                traceback.print_exc()
+                raise
+
+        return ret
 
 class LibvirtOpenVswitchVirtualPortDriver(LibvirtGenericVIFDriver):
     """Retained in Grizzly for compatibility with Neutron
