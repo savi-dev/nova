@@ -258,8 +258,20 @@ class API(base.Base):
                 if network_id:
                     net_ids.append(network_id)
 
-        nets = self._get_available_networks(context, instance['project_id'],
+        unique_nets = self._get_available_networks(context, instance['project_id'],
                                             net_ids)
+
+        # net_ids is full list of nets requested (including duplicates)
+        nets = []
+        for network_id in net_ids:
+            for unique_net in unique_nets:
+                if unique_net['id'] == network_id:
+                    nets.append(unique_net)
+                    break
+
+        # If no nets requested, give all available nets by default
+        if not nets:
+            nets = unique_nets
 
         if not nets:
             LOG.warn(_("No network configured!"), instance=instance)
@@ -570,9 +582,9 @@ class API(base.Base):
         nets = self._get_available_networks(context,
                                 context.project_id, net_ids)
 
-        if len(nets) != len(net_ids):
-            requsted_netid_set = set(net_ids)
-            returned_netid_set = set([net['id'] for net in nets])
+        requsted_netid_set = set(net_ids)
+        returned_netid_set = set([net['id'] for net in nets])
+        if len(requsted_netid_set) != len(returned_netid_set):
             lostid_set = requsted_netid_set - returned_netid_set
             id_str = ''
             for _id in lostid_set:

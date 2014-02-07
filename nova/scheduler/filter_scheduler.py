@@ -32,6 +32,7 @@ from nova.pci import pci_request
 from nova.scheduler import driver
 from nova.scheduler import scheduler_options
 from nova.scheduler import utils as scheduler_utils
+from nova.scheduler.plugins import janus_plugin
 
 
 CONF = cfg.CONF
@@ -318,10 +319,24 @@ class FilterScheduler(driver.Scheduler):
         # host, we virtually consume resources on it so subsequent
         # selections can adjust accordingly.
 
+        # -------------------------------------------------------------------------------
+        # @author Eliot J. Kang <eliot@savinetwork.ca>
+        # Get hosts based on plugins
+        # plugined_hosts = ['node']
+        _scheduler_hints = filter_properties.get('scheduler_hints', [])
+        sch_metric='none'
+        if _scheduler_hints:
+            sch_metric = _scheduler_hints.get('sch_metric', [])
+            LOG.debug(_("sch_metric: %s") % sch_metric)
+        else:
+            LOG.debug(_("No specified filter for janus scheduling"))
+        plugined_nodes = self.host_manager.get_plugined_nodes(elevated, janus_plugin.JanusPlugin(), sch_metric)
+        # -------------------------------------------------------------------------------
+
         # Note: remember, we are using an iterator here. So only
         # traverse this list once. This can bite you if the hosts
         # are being scanned in a filter or weighing function.
-        hosts = self.host_manager.get_all_host_states(elevated)
+        hosts = self.host_manager.get_all_host_states(elevated, plugined_nodes)
 
         selected_hosts = []
         if instance_uuids:
