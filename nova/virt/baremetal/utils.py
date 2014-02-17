@@ -86,15 +86,25 @@ def random_alnum(count):
     chars = string.ascii_uppercase + string.digits
     return "".join(random.choice(chars) for _ in range(count))
 
+def _get_if_number(ifs, net_id, ifc_num):
+    if ifs:
+        for key, val in ifs.iteritems():
+            if val == net_id:
+                ifs.pop(key)
+                return key
+    return ifc_num + 1
 
-def map_network_interfaces(network_info, use_ipv6=False):
+def map_network_interfaces(network_info, ifs=None, use_ipv6=False):
     # TODO(deva): fix assumption that device names begin with "eth"
     #             and fix assumption about ordering
     if not isinstance(network_info, list):
         network_info = [network_info]
 
-    interfaces = []
-    for id, vif in enumerate(network_info):
+    id = 0
+    for vif in network_info:
+        net_id = vif['network']['id']
+        id = _get_if_number(ifs, net_id, id)
+        
         address_v6 = gateway_v6 = netmask_v6 = None
         address_v4 = gateway_v4 = netmask_v4 = dns_v4 = None
 
@@ -104,14 +114,20 @@ def map_network_interfaces(network_info, use_ipv6=False):
             if len(subnets_v6):
                 address_v6 = subnets_v6[0]['ips'][0]['address']
                 netmask_v6 = subnets_v6[0].as_netaddr()._prefixlen
-                gateway_v6 = subnets_v6[0]['gateway']['address']
+                try:
+                    gateway_v6 = subnets_v6[0]['gateway']['address']
+                except:
+                    gateway_v6 = None
 
         subnets_v4 = [s for s in vif['network']['subnets']
                 if s['version'] == 4]
         if len(subnets_v4):
             address_v4 = subnets_v4[0]['ips'][0]['address']
             netmask_v4 = subnets_v4[0].as_netaddr().netmask
-            gateway_v4 = subnets_v4[0]['gateway']['address']
+            try:
+                gateway_v4 = subnets_v4[0]['gateway']['address']
+            except:
+                gateway_v4 = None
             dns_v4 = ' '.join([x['address'] for x in subnets_v4[0]['dns']])
 
         interface = {

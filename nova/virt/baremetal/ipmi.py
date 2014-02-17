@@ -214,7 +214,7 @@ class IPMI(base.PowerManager):
         self._power_on()
         return self.state
 
-    def reboot_node(self):
+    def reboot_node(self, reboot_type):
         """Cycles the power to a node.
 
         Turns the power off, sets next-boot to PXE, and turns the power on.

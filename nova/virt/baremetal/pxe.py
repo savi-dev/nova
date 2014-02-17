@@ -77,9 +77,21 @@ CONF.register_group(baremetal_group)
 CONF.register_opts(pxe_opts, baremetal_group)
 CONF.import_opt('use_ipv6', 'nova.netconf')
 
+def get_ifs_order_from_metadata(instance):
+    ifs = {}
+    metadata = instance.get('metadata', [])
+    for meta in metadata:
+        st = str(meta.get('key', ''))
+        if st.startswith('eth'):
+            try:
+                i = int(st.strip('eth'))
+                ifs[st] = (i, meta.get('value', ''))
+            except:
+                pass
+    return ifs
 
-def build_pxe_network_config(network_info):
-    interfaces = bm_utils.map_network_interfaces(network_info, CONF.use_ipv6)
+def build_pxe_network_config(network_info, ifs=None):
+    interfaces = bm_utils.map_network_interfaces(network_info, ifs=ifs, use_ipv6=CONF.use_ipv6)
     template = None
     if not CONF.use_ipv6:
         template = "ip=%(address)s::%(gateway)s:%(netmask)s::%(name)s:off"
@@ -91,7 +103,7 @@ def build_pxe_network_config(network_info):
     return ' '.join(net_config)
 
 
-def build_pxe_config(deployment_id, deployment_key, deployment_iscsi_iqn,
+def build_pxe_config(deployment_id, instance, deployment_key, deployment_iscsi_iqn,
                       deployment_aki_path, deployment_ari_path,
                       aki_path, ari_path, network_info):
     """Build the PXE config file for a node
@@ -107,7 +119,8 @@ def build_pxe_config(deployment_id, deployment_key, deployment_iscsi_iqn,
 
     network_config = None
     if network_info and CONF.baremetal.pxe_network_config:
-        network_config = build_pxe_network_config(network_info)
+        ifs = get_ifs_order_from_metadata(instance)
+        network_config = build_pxe_network_config(network_info, ifs=ifs)
 
     pxe_options = {
             'deployment_id': deployment_id,
@@ -127,8 +140,8 @@ def build_pxe_config(deployment_id, deployment_key, deployment_iscsi_iqn,
                             'ROOT': '${ROOT}'})
 
 
-def build_network_config(network_info):
-    interfaces = bm_utils.map_network_interfaces(network_info, CONF.use_ipv6)
+def build_network_config(network_info, ifs=None):
+    interfaces = bm_utils.map_network_interfaces(network_info, ifs=ifs, use_ipv6=CONF.use_ipv6)
     tmpl_path, tmpl_file = os.path.split(CONF.baremetal.net_config_template)
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(tmpl_path))
     template = env.get_template(tmpl_file)
@@ -312,7 +325,8 @@ class PXE(base.NodeDriver):
             # NOTE(deva): copy so we dont modify the original
             injected_files = list(injected_files)
 
-        net_config = build_network_config(network_info)
+        ifs = get_ifs_order_from_metadata(instance)
+        net_config = build_network_config(network_info, ifs)
 
         if instance['hostname']:
             injected_files.append(('/etc/hostname', instance['hostname']))
@@ -374,6 +388,10 @@ class PXE(base.NodeDriver):
         (root_mb, swap_mb) = get_partition_sizes(instance)
         pxe_config_file_path = get_pxe_config_file_path(instance)
         image_file_path = get_image_file_path(instance)
+        
+        node_local_mb = node.get('local_gb', 0) * 1024 
+        if (node_local_mb - swap_mb) > root_mb:
+            root_mb = node_local_mb - swap_mb
 
         deployment_key = bm_utils.random_alnum(32)
         deployment_iscsi_iqn = "iqn-%s" % instance['uuid']
@@ -384,7 +402,7 @@ class PXE(base.NodeDriver):
                  'root_mb': root_mb,
                  'swap_mb': swap_mb})
         pxe_config = build_pxe_config(
-                    node['id'],
+                    node['id'], instance,
                     deployment_key,
                     deployment_iscsi_iqn,
                     image_info['deploy_kernel'][1],

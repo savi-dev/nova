@@ -1,0 +1,5 @@
+eclipse.preferences.version=1
+encoding//nova/tests/virt/baremetal/test_pxe.py=utf-8
+encoding//nova/virt/baremetal/driver.py=utf-8
+encoding//nova/virt/baremetal/ipmi.py=utf-8
+encoding//nova/virt/baremetal/snmp.py=utf-8

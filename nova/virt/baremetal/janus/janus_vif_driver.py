@@ -18,13 +18,13 @@
 from webob import exc
 
 from nova import exception
-from nova import flags
 from nova.openstack.common import log as logging
-from nova.openstack.common import cfg
+
+from oslo.config import cfg
 
 from nova.virt.baremetal import vif_driver
 
-FLAGS = flags.FLAGS
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 
@@ -35,38 +35,65 @@ from janus.network.network import JanusNetworkDriver
 janus_libvirt_ovs_driver_opt = cfg.StrOpt('libvirt_ovs_janus_api_host',
                                         default='127.0.0.1:8091',
                                         help='OpenFlow Janus REST API host:port')
-FLAGS.register_opt(janus_libvirt_ovs_driver_opt)
+CONF.register_opt(janus_libvirt_ovs_driver_opt)
 
 class JanusVIFDriver(vif_driver.BareMetalVIFDriver):
     def __init__(self, **kwargs):
         super(JanusVIFDriver, self).__init__()
         LOG.debug('Janus REST host %s', FLAGS.libvirt_ovs_janus_api_host)
-        host, port = FLAGS.libvirt_ovs_janus_api_host.split(':')
+        host, port = CONF.libvirt_ovs_janus_api_host.split(':')
         self.client = JanusNetworkDriver(host, port)
 
-    def _after_plug(self, instance, network, mapping, pif):
-        dpid = pif['datapath_id']
+    def _after_plug(self, instance, vif, pif):
+        datapath_id = dpid = pif['datapath_id']
         if dpid.find("0x") == 0:
             dpid = dpid[2:]
-
+        
+        mac_address = vif.get('address', None)      
+        net = vif.get('network')
+        subnets = net.get('subnets')
+        network_id = net['id']  
+        of_port_no = pif['port_no']
         # Register MAC with network first, then try to register port
         try:
-            self.client.addMAC(network['id'], mapping['mac'])
-            self.client.createPort(network['id'], dpid, pif['port_no'])
+            self.client.createPort(network_id, datapath_id, of_port_no, migrating = False)
+            self.client.addMAC(network_id, mac_address)
+            for subnet in subnets:
+                ips = subnet['ips']
+                for ip in ips:
+                    ip_address = ip['address']
+                    self.client.ip_mac_mapping(network_id, datapath_id,
+                                           mac_address, ip_address,
+                                           of_port_no,
+                                           migrating = False)
+
         except httplib.HTTPException as e:
             res = e.args[0]
             if res.status != httplib.CONFLICT:
                 raise
 
-    def _after_unplug(self, instance, network, mapping, pif):
-        dpid = pif['datapath_id']
+    def _after_unplug(self, instance, vif, pif):
+        datapath_id = dpid = pif['datapath_id']
         if dpid.find("0x") == 0:
             dpid = dpid[2:]
 
+        mac_address = vif.get('address', None)      
+        net = vif.get('network')
+        subnets = net.get('subnets')
+        network_id = net['id']  
+        of_port_no = pif['port_no']
         try:
-            self.client.deletePort(network['id'], dpid, pif['port_no'])
-            self.client.delMAC(network['id'], mapping['mac'])
+            self.client.deletePort(network_id, datapath_id, of_port_no)
+            # To do: Un-mapping of ip to mac?
         except httplib.HTTPException as e:
             res = e.args[0]
             if res.status != httplib.NOT_FOUND:
+                traceback.print_exc()
+                raise
+        try:
+            self.client.delMAC(network_id, mac_address)
+        except httplib.HTTPException as e:
+            res = e.args[0]
+            if res.status != httplib.NOT_FOUND:
+                traceback.print_exc()
                 raise
