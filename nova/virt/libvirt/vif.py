@@ -21,6 +21,7 @@
 
 import copy
 import traceback
+import httplib
 
 from oslo.config import cfg
 
@@ -34,7 +35,7 @@ from nova import utils
 from nova.virt.libvirt import config as vconfig
 from nova.virt.libvirt import designer
 
-from janus.network.network import JanusNetworkDriver
+from janus.network.network_driver import JanusNetworkDriver
 
 LOG = logging.getLogger(__name__)
 
