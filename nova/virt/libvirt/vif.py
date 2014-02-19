@@ -913,7 +913,11 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
         br_name = self.get_bridge_name(vif)
         datapath_id = _get_datapath_id(br_name)
         
-        (v2_name, of_port_no) = self._get_port_no(vif)
+        try:
+            (v2_name, of_port_no) = self._get_port_no(vif)
+        except:
+            of_port_no = -1
+            pass
         
         mac_address = vif.get('address', None)
         net = vif.get('network')
@@ -923,7 +927,8 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
         ret = self.unplug_ovs_hybrid(instance, vif)
         
         try:
-            self.client.deletePort(network_id, datapath_id, of_port_no)
+            if of_port_no != -1:
+                self.client.deletePort(network_id, datapath_id, of_port_no)
             # To do: Un-mapping of ip to mac?
         except httplib.HTTPException as e:
             res = e.args[0]
