@@ -20,6 +20,7 @@
 from migrate.changeset import UniqueConstraint
 from migrate import ForeignKeyConstraint
 from sqlalchemy import MetaData, Table
+import sys
 
 from nova.db.sqlalchemy import utils
 
@@ -141,15 +142,22 @@ def _uc_rename(migrate_engine, upgrade=True):
             else:
                 old_name, new_name = new_uc_name, old_uc_name
 
-            utils.drop_unique_constraint(migrate_engine, table,
+            try:
+                utils.drop_unique_constraint(migrate_engine, table,
                                          old_name, *(columns))
+            except:
+                print "Unexpected error:", sys.exc_info()[0]
+                pass
             if (new_name != 'virtual_interfaces_instance_uuid_fkey' or
                     migrate_engine.name != "mysql"):
                 # NOTE(jhesketh): The virtual_interfaces_instance_uuid_fkey
                 # key always existed in the table, we don't need to create
                 # a unique constraint. See bug/1207344
-                UniqueConstraint(*columns, table=t, name=new_name).create()
-
+                try:
+                   UniqueConstraint(*columns, table=t, name=new_name).create()
+                except:
+                   print "Unexpected error:", sys.exc_info()[0]
+                   pass
             if table in constraint_names and migrate_engine.name == "mysql":
                 ForeignKeyConstraint(
                     columns=[t.c.instance_uuid],
