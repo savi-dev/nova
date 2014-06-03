@@ -319,7 +319,7 @@ def bm_interface_get_by_vif_uuid(context, vif_uuid):
 def bm_interface_get_all_by_bm_node_id(context, bm_node_id):
     result = model_query(context, models.BareMetalInterface,
                          read_deleted="no").\
-                 filter_by(bm_node_id=bm_node_id).\
+                 filter_by(bm_node_id=bm_node_id).order_by(asc(models.BareMetalInterface.id)).\
                  all()
 
     if not result:

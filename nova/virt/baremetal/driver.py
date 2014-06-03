@@ -214,7 +214,7 @@ class BareMetalDriver(driver.ComputeDriver):
         node_uuid = self._require_node(instance)
         node = db.bm_node_get_by_node_uuid(context, node_uuid)
         ifaces = db.bm_interface_get_all_by_bm_node_id(context, node['id'])
-        return set(iface['address'] for iface in ifaces)
+        return set(iface['address'] for iface in ifaces if iface['type'] == 1)
 
     def spawn(self, context, instance, image_meta, injected_files,
               admin_password, network_info=None, block_device_info=None):
