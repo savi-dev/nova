@@ -372,7 +372,14 @@ class HostManager(object):
         filter_classes = self._choose_host_filters(filter_class_names)
         ignore_hosts = filter_properties.get('ignore_hosts', [])
         force_hosts = filter_properties.get('force_hosts', [])
+        if len(force_hosts) == 0:
+            scheduler_hints = filter_properties.get('scheduler_hints', {})
+            force_hosts = scheduler_hints.get('force_hosts', [])
+
         force_nodes = filter_properties.get('force_nodes', [])
+        if len(force_nodes) == 0:
+            scheduler_hints = filter_properties.get('scheduler_hints', {})
+            focre_nodes = scheduler_hints.get('force_nodes', [])
 
         if ignore_hosts or force_hosts or force_nodes:
             # NOTE(deva): we can't assume "host" is unique because
