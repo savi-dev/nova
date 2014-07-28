@@ -140,13 +140,20 @@ def build_pxe_config(deployment_id, instance, deployment_key, deployment_iscsi_i
                             'ROOT': '${ROOT}'})
 
 
-def build_network_config(network_info, ifs=None):
+def build_network_config(network_info, num_ifaces, ifs=None):
     interfaces = bm_utils.map_network_interfaces(network_info, ifs=ifs, use_ipv6=CONF.use_ipv6)
     tmpl_path, tmpl_file = os.path.split(CONF.baremetal.net_config_template)
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(tmpl_path))
     template = env.get_template(tmpl_file)
-    return template.render({'interfaces': interfaces,
-                            'use_ipv6': CONF.use_ipv6})
+    ifcs=[]
+    for i in range(0, num_ifaces):
+        d={}
+        d['name']='eth%d'%i
+        ifcs.append(d)
+    return template.render({'interfaces': ifcs,
+                            'use_ipv6': False})
+    #return template.render({'interfaces': interfaces,
+    #                        'use_ipv6': CONF.use_ipv6})
 
 
 def get_deploy_aki_id(instance_type):
@@ -249,7 +256,7 @@ class PXE(base.NodeDriver):
     def _collect_mac_addresses(self, context, node):
         macs = set()
         for nic in db.bm_interface_get_all_by_bm_node_id(context, node['id']):
-            if nic['address']:
+            if nic['address'] and nic['type'] == 0:
                 macs.add(nic['address'])
         return sorted(macs)
 
@@ -326,7 +333,8 @@ class PXE(base.NodeDriver):
             injected_files = list(injected_files)
 
         ifs = get_ifs_order_from_metadata(instance)
-        net_config = build_network_config(network_info, ifs)
+        num_ifacs = len(db.bm_interface_get_all_by_bm_node_id(context, node['id']))
+        net_config = build_network_config(network_info, num_ifacs, ifs)
 
         if instance['hostname']:
             injected_files.append(('/etc/hostname', instance['hostname']))

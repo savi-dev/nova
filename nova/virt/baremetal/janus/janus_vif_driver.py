@@ -30,7 +30,7 @@ LOG = logging.getLogger(__name__)
 
 # For connecting with Janus API
 import httplib
-from janus.network.network import JanusNetworkDriver
+from janus.network.network_driver import JanusNetworkDriver
 
 janus_libvirt_ovs_driver_opt = cfg.StrOpt('libvirt_ovs_janus_api_host',
                                         default='127.0.0.1:8091',
@@ -40,12 +40,14 @@ CONF.register_opt(janus_libvirt_ovs_driver_opt)
 class JanusVIFDriver(vif_driver.BareMetalVIFDriver):
     def __init__(self, **kwargs):
         super(JanusVIFDriver, self).__init__()
-        LOG.debug('Janus REST host %s', FLAGS.libvirt_ovs_janus_api_host)
+        LOG.debug('Janus REST host %s', CONF.libvirt_ovs_janus_api_host)
         host, port = CONF.libvirt_ovs_janus_api_host.split(':')
         self.client = JanusNetworkDriver(host, port)
 
     def _after_plug(self, instance, vif, pif):
         datapath_id = dpid = pif['datapath_id']
+        if not dpid:
+            return
         if dpid.find("0x") == 0:
             dpid = dpid[2:]
         
@@ -74,6 +76,8 @@ class JanusVIFDriver(vif_driver.BareMetalVIFDriver):
 
     def _after_unplug(self, instance, vif, pif):
         datapath_id = dpid = pif['datapath_id']
+        if not dpid:
+            return
         if dpid.find("0x") == 0:
             dpid = dpid[2:]
 

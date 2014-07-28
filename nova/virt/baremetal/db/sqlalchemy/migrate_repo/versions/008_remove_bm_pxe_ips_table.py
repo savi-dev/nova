@@ -35,6 +35,9 @@ def upgrade(migrate_engine):
     table = Table(table_name, meta, autoload=True)
     table.drop()
 
+    t = Table('bm_interfaces', meta, autoload=True)
+    type_col = Column('type', Integer, default=0)
+    t.create_column(type_col)
 
 def downgrade(migrate_engine):
     meta = MetaData()
@@ -59,3 +62,6 @@ def downgrade(migrate_engine):
         bm_pxe_ips.c.bm_node_id,
         bm_pxe_ips.c.deleted
     ).create(migrate_engine)
+
+    t = Table('bm_interfaces', meta, autoload=True)
+    t.drop_column('type')

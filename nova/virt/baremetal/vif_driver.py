@@ -45,7 +45,7 @@ class BareMetalVIFDriver(object):
         #             this is just searching for a free physical interface
         pifs = bmdb.bm_interface_get_all_by_bm_node_id(ctx, node['id'])
         for pif in pifs:
-            if not pif['vif_uuid']:
+            if not pif['vif_uuid'] and pif['type'] == 1 and pif.get('address', None) == vif.get('address', None):
                 bmdb.bm_interface_set_vif_uuid(ctx, pif['id'], vif_uuid)
                 LOG.debug(_("pif:%(id)s is plugged (vif_uuid=%(vif_uuid)s)")
                           % {'id': pif['id'], 'vif_uuid': vif_uuid})

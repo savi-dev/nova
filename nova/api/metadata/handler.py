@@ -104,7 +104,11 @@ class MetadataRequestHandler(wsgi.Application):
             return(base.ec2_md_print(base.VERSIONS + ["latest"]))
 
         if CONF.service_neutron_metadata_proxy:
-            meta_data = self._handle_instance_id_request(req)
+            try:
+               meta_data = self._handle_instance_id_request(req)
+            except:
+               meta_data = self._handle_remote_ip_request(req)
+               pass
         else:
             if req.headers.get('X-Instance-ID'):
                 LOG.warn(

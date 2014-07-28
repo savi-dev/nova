@@ -63,3 +63,4 @@ class BareMetalInterface(BASE, models.NovaBase):
     datapath_id = Column(String(255))
     port_no = Column(Integer)
     vif_uuid = Column(String(36), unique=True)
+    type = Column(Integer, default=0)

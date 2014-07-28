@@ -34,7 +34,7 @@ def cache_image(context, target, image_id, user_id, project_id):
 
 
 def inject_into_image(image, key, net, metadata, admin_password,
-        files, partition, use_cow=False):
+        files, partition, use_cow = False):
     try:
         disk_api.inject_data(image, key, net, metadata, admin_password,
                 files, partition, use_cow)
@@ -94,17 +94,18 @@ def _get_if_number(ifs, net_id, ifc_num):
                 return key
     return ifc_num + 1
 
-def map_network_interfaces(network_info, ifs=None, use_ipv6=False):
+def map_network_interfaces(network_info, ifs = None, use_ipv6 = False):
     # TODO(deva): fix assumption that device names begin with "eth"
     #             and fix assumption about ordering
     if not isinstance(network_info, list):
         network_info = [network_info]
 
+    interfaces = []
     id = 0
     for vif in network_info:
         net_id = vif['network']['id']
         id = _get_if_number(ifs, net_id, id)
-        
+
         address_v6 = gateway_v6 = netmask_v6 = None
         address_v4 = gateway_v4 = netmask_v4 = dns_v4 = None
 
