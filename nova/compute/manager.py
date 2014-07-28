@@ -4015,12 +4015,14 @@ class ComputeManager(manager.SchedulerDependentManager):
                      context, instance, "live_migration.pre.start",
                      network_info=network_info)
 
+        self._add_flag_to_network_info(network_info, 'migrating')
         pre_live_migration_data = self.driver.pre_live_migration(context,
                                        instance,
                                        block_device_info,
                                        network_info,
                                        disk,
                                        migrate_data)
+        self._remove_flag_from_network_info(network_info, 'migrating')
 
         # NOTE(tr3buchet): setup networks on destination host
         self.network_api.setup_networks_on_host(context, instance,
@@ -4081,6 +4083,14 @@ class ComputeManager(manager.SchedulerDependentManager):
                                    self._rollback_live_migration,
                                    block_migration, migrate_data)
 
+    def _add_flag_to_network_info(self, network_info, flag):
+        for vif in network_info:
+            vif[flag] = True
+
+    def _remove_flag_from_network_info(self, network_info, flag):
+        for vif in network_info:
+            vif.pop(flag, None)
+
     @wrap_exception()
     def _post_live_migration(self, ctxt, instance_ref,
                             dest, block_migration=False, migrate_data=None):
@@ -4139,10 +4149,10 @@ class ComputeManager(manager.SchedulerDependentManager):
         # pause/suspend/terminate do not work.
         self.compute_rpcapi.post_live_migration_at_destination(ctxt,
                 instance_ref, block_migration, dest)
-
         # No instance booting at source host, but instance dir
         # must be deleted for preparing next block migration
         # must be deleted for preparing next live migration w/o shared storage
+        self._add_flag_to_network_info(network_info, 'migrated')
         is_shared_storage = True
         if migrate_data:
             is_shared_storage = migrate_data.get('is_shared_storage', True)
@@ -4154,7 +4164,7 @@ class ComputeManager(manager.SchedulerDependentManager):
             # is false, as the network devices at the source must be
             # torn down
             self.driver.unplug_vifs(instance_ref, network_info)
-
+        self._remove_flag_from_network_info(network_info, 'migrated')
         # NOTE(tr3buchet): tear down networks on source host
         self.network_api.setup_networks_on_host(ctxt, instance_ref,
                                                 self.host, teardown=True)

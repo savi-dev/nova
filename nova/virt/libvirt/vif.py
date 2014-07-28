@@ -885,12 +885,12 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
         except:
             traceback.print_exc()
             pass
-        
+        migrating = vif.get('migrating', False)
         net = vif.get('network')
         subnets = net.get('subnets')
         network_id = net['id']
         try:
-            self.client.createPort(network_id, datapath_id, of_port_no, migrating = False)
+            self.client.createPort(network_id, datapath_id, of_port_no, migrating = migrating)
             self.client.addMAC(network_id, mac_address)
             for subnet in subnets:
                 ips = subnet['ips']
@@ -899,7 +899,7 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
                     self.client.ip_mac_mapping(network_id, datapath_id,
                                            mac_address, ip_address,
                                            of_port_no,
-                                           migrating = False)
+                                           migrating = migrating)
         except httplib.HTTPException as e:
             res = e.args[0]
             if res.status != httplib.CONFLICT:
@@ -923,11 +923,12 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
         net = vif.get('network')
         subnets = net.get('subnets')
         network_id = net['id']
+        migrated = vif.get('migrated', False)
         
         ret = self.unplug_ovs_hybrid(instance, vif)
         
         try:
-            if of_port_no != -1:
+            if of_port_no != -1 and migrated is False:
                 self.client.deletePort(network_id, datapath_id, of_port_no)
             # To do: Un-mapping of ip to mac?
         except httplib.HTTPException as e:
@@ -936,7 +937,8 @@ class LibvirtJanusHybridOVSBridgeDriver(LibvirtGenericVIFDriver):
                 traceback.print_exc()
                 raise
         try:
-            self.client.delMAC(network_id, mac_address)
+            if migrated is False:
+                self.client.delMAC(network_id, mac_address)
         except httplib.HTTPException as e:
             res = e.args[0]
             if res.status != httplib.NOT_FOUND:
