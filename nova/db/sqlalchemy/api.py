@@ -59,6 +59,7 @@ from nova.openstack.common.db import exception as db_exc
 from nova.openstack.common.db.sqlalchemy import session as db_session
 from nova.openstack.common.db.sqlalchemy import utils as sqlalchemyutils
 from nova.openstack.common import excutils
+from nova.openstack.common import jsonutils
 from nova.openstack.common.gettextutils import _
 from nova.openstack.common import log as logging
 from nova.openstack.common import timeutils
@@ -599,6 +600,8 @@ def _prep_stats_dict(values):
     """Make list of ComputeNodeStats."""
     stats = []
     d = values.get('stats', {})
+    if isinstance(d, unicode):
+        d = jsonutils.loads(d)
     for k, v in d.iteritems():
         stat = models.ComputeNodeStat()
         stat['key'] = k
@@ -631,6 +634,8 @@ def _update_stats(context, new_stats, compute_id, session, prune_stats=False):
         statmap[key] = stat
 
     stats = []
+    if isinstance(new_stats, unicode):
+        new_stats = jsonutils.loads(new_stats)
     for k, v in new_stats.iteritems():
         old_stat = statmap.pop(k, None)
         if old_stat:
