@@ -175,7 +175,7 @@ class API(base.Base):
                 if not available_macs:
                     raise exception.PortNotFree(
                         instance=instance['display_name'])
-                mac_address = available_macs.pop()
+                mac_address = available_macs.pop(0)
                 port_req_body['port']['mac_address'] = mac_address
             if dhcp_opts is not None:
                 port_req_body['port']['extra_dhcp_opts'] = dhcp_opts
@@ -219,7 +219,9 @@ class API(base.Base):
             # Make a copy we can mutate: records macs that have not been used
             # to create a port on a network. If we find a mac with a
             # pre-allocated port we also remove it from this set.
-            available_macs = set(hypervisor_macs)
+            seen = set()
+            available_macs = [m for m in hypervisor_macs
+                              if not (m in seen or seen.add(m))]
         neutron = neutronv2.get_client(context)
         LOG.debug(_('allocate_for_instance() for %s'),
                   instance['display_name'])
