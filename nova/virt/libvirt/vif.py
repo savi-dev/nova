@@ -436,6 +436,7 @@ class LibvirtGenericVIFDriver(LibvirtBaseVIFDriver):
         if not linux_net.device_exists(br_name):
             utils.execute('brctl', 'addbr', br_name, run_as_root=True)
             utils.execute('brctl', 'setfd', br_name, 0, run_as_root=True)
+            utils.execute('brctl', 'setageing', br_name, 0, run_as_root=True)
             utils.execute('brctl', 'stp', br_name, 'off', run_as_root=True)
 
         if not linux_net.device_exists(v2_name):
@@ -482,6 +483,7 @@ class LibvirtGenericVIFDriver(LibvirtBaseVIFDriver):
         if not linux_net.device_exists(br_name):
             utils.execute('brctl', 'addbr', br_name, run_as_root=True)
             utils.execute('brctl', 'setfd', br_name, 0, run_as_root=True)
+            utils.execute('brctl', 'setageing', br_name, 0, run_as_root=True)
             utils.execute('brctl', 'stp', br_name, 'off', run_as_root=True)
 
         if not linux_net.device_exists(v2_name):
