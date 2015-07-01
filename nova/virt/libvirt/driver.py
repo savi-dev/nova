@@ -2043,7 +2043,7 @@ class LibvirtDriver(driver.ComputeDriver):
         for interface in interfaces:
             utils.execute('tee',
                           '/sys/class/net/%s/brport/hairpin_mode' % interface,
-                          process_input='1',
+                          process_input='0',
                           run_as_root=True,
                           check_exit_code=[0, 1])
 
